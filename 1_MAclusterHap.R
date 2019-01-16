@@ -9,9 +9,9 @@ library(adegenet)
 library(wordcloud)
 library(systemPipeR)
 
-FILTER <- TRUE
-newMA <- TRUE
-newDeDa <- TRUE
+FILTER <- FALSE 
+newMA <- FALSE
+newDeDa <- FALSE
 
 files <- list.files(path="/SAN/Victors_playground/mouseGT/raw_fastq",
                     pattern=".fastq.gz", full.names=TRUE)
@@ -75,13 +75,13 @@ if(newMA) {
         }
     MA1 <- sortAmplicons(MA, filedir=stratfiles,
                          starting.at=1, max.mismatch=4)
-    saveRDS(MA1, file="/SAN/Zebra/MA1.Rds")
+    saveRDS(MA1, file="/SAN/Victors_playground/mouseGT/MA1.Rds")
     pdf("figures/primers_MA_sorted.pdf", width=46)
     plotAmpliconNumbers(MA1)
     dev.off()
 } else {
     if(!newMA){
-        MA1 <- readRDS(file="/SAN/Zebra/MA1.Rds")
+        MA1 <- readRDS(file="/SAN/Victors_playground/mouseGT/MA1.Rds")
     } else {stop("Whant new sorting or not? Set newMA to TRUE")}
 } 
 
@@ -222,7 +222,7 @@ pasteDNAstrings <- function (x, y){
 }
 
 oneAln <- Reduce(pasteDNAstrings, Aln)
->onames(oneAln) <- names(Aln[[1]])
+names(oneAln) <- names(Aln[[1]])
 
 writeXStringSet(oneAln, file="/SAN/Victors_playground/mouseGT/combinedEfalNuc.fasta")
 
@@ -306,3 +306,13 @@ lapply(inFrameAln, function (x) cbind(unique(width(x[[1]])), x[[2]]))
 
 frameAln <- lapply(inFrameAln, "[[", 1)
 toORF <- lapply(inFrameAln, "[[", 2)
+
+oneFrameAln <- Reduce(pasteDNAstrings, frameAln)
+
+dbinFrame <- as.DNAbin(oneFrameAln)
+snpposi.plot(as.matrix(dbinFrame))
+
+
+
+gind <- DNAbin2genind(dbin)
+
