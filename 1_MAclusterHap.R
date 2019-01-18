@@ -247,20 +247,43 @@ myPch <- c(15,17)[temp]
 
 pdf("figures/dudiPCA.pdf")
 plot(pca1$li, col=myCol, cex=3, pch=myPch)
-
 textplot(pca1$li[,1], pca1$li[,2], words=rownames(X), cex=1.4, new=FALSE)
 abline(h=0,v=0,col="grey",lty=2)
-
 ## here it makes more senst to add up the contribution of different markers
 ## s.arrow(pca1$c1*.5, add.plot=TRUE)
-
 legend("topright", pch=c(15,17), col=transp(c("blue","red"),.7),
        leg=c("Apodemus","Mus"), pt.cex=2)
-
+u <- par("usr")
+v <- c(grconvertX(u[1:2], "user", "ndc"),
+       grconvertY(u[3:4], "user", "ndc"))
+v <- c( (v[1]+v[2])/2, v[2], (v[3]+v[4])/2, v[4] )
+par(fig=v, new=TRUE, mar=c(0,0,0,0))
+barplot(pca1$eig[1:50],main="PCA eigenvalues", col=heat.colors(50))
 dev.off()
 
-## snpposi.plot(x = as.integer(seg.sites(dbin)),
-##              genome.size = length(dbin[[1]]))
+
+## now put it on a tree...
+D <- DistanceMatrix(oneAln, penalizeGapLetterMatches=FALSE)
+
+pdf("figures/NJtre.pdf")
+par(xpd=TRUE)
+plot(tre, type="unrooted", edge.w=2)
+## edgelabels(tex=round(tre$edge.length,1), bg=rgb(.8,.8,1,.8))
+dev.off()
+
+DJC <- DistanceMatrix(oneAln, penalizeGapLetterMatches=FALSE,
+                      correction="Jukes-Cantor")
+
+treJC <- nj(DJC)
+
+pdf("figures/NJtreJC.pdf")
+par(xpd=TRUE)
+plot(tre, type="unrooted", edge.w=2)
+## edgelabels(tex=round(tre$edge.length,3), bg=rgb(.8,.8,1,.8))
+dev.off()
+
+snpposi.plot(x = as.integer(seg.sites(dbin)),
+             genome.size = length(dbin[[1]]))
 
 
 ## Frame analysis:
@@ -293,26 +316,48 @@ inFrameAln <- lapply(Aln, function (x) {
                            translate(DNA[[6]][width(DNA[[6]])>2]))))
     options(warn=1)
     ## hoping that one sequence has no gaps at all
-    orf.to <- max(c(none, one, two, noneR, oneR, twoR))
+    orf.to <- c(none, one, two, noneR, oneR, twoR)
     ## dodgy: having to avoid that in some cases (amplicon 30) tow
     ## sequences have maximal orf length
     this <- which(orf.to==max(orf.to))[[1]]
+    this.cor <- (this+2)%%3
     cat("THIS:", this, "\n")
-    list(AlignSeqs(DNA[[this]]), orf.to*3)
+    if(this.cor>0){
+        rm.pattern <- paste0(rep("G", times=this.cor), collapse="")
+        rm.pattern <- paste0("^", rm.pattern)
+        DNA[[this]] <- DNAStringSet(gsub(rm.pattern, "",  DNA[[this]]))
+    }
+    list(AlignSeqs(DNA[[this]]), orf.to[[this]]*3, this.cor)
 })
 
 ## yeah baby, now correct
 lapply(inFrameAln, function (x) cbind(unique(width(x[[1]])), x[[2]]))
 
 frameAln <- lapply(inFrameAln, "[[", 1)
+
 toORF <- lapply(inFrameAln, "[[", 2)
+toFrame <- unlist(lapply(inFrameAln, "[[", 3))+1
 
 oneFrameAln <- Reduce(pasteDNAstrings, frameAln)
 
-dbinFrame <- as.DNAbin(oneFrameAln)
-snpposi.plot(as.matrix(dbinFrame))
+partition.to <- cumsum(unlist(lapply(frameAln, function (x) max(width(x)))))
+
+writeXStringSet(oneFrameAln,
+                file="/SAN/Victors_playground/mouseGT/combinedEfalNucFrame.fasta")
+
+write.csv(cbind(partition.to, toFrame),
+          file="/SAN/Victors_playground/mouseGT/combinedEfalNucFramePartitions.csv")
 
 
+## dbinFrame <- as.DNAbin(oneFrameAln)
 
-gind <- DNAbin2genind(dbin)
+## FIFTH(align=dbinFrame, saveFile = FALSE)
+
+
+## xpdf("figures/snpposi.pdf")
+## snpposi.plot(as.matrix(dbinFrame))
+## dev.off()
+
+
+## gind <- DNAbin2genind(dbin)
 
